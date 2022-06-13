@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ColorTable</title>
+</head>
+<body>
+<table id="datatable" >
+    <thead>
+    <tr>
+        <th>Picture</th>
+        <th>Name</th>
+        <th>Code</th>
+        <th>Category</th>
+        <th>Status</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<div id="paging-first-datatable" class="pagination datatable-pagination">
+    <div class="datatable-info">
+        <span></span>
+    </div>
+</div>
+<div class="loading"></div>
+<script src="ColorTable.js"></script>
+<script>
+    const datatable = new ColorTable.init(document.querySelector("#datatable"), {
+        counterDivSelector: ".datatable-info span",
+        pagingDivSelector: "#paging-first-datatable",
+        firstPage: false,
+        lastPage: false,
+        loadingDivSelector: ".loading",
+        data: {
+            url: "http://localhost/pensingle/get.php",
+            type: "post",
+            serverPaging: true,
+        }
+    })
+</script>
+</body>
+</html>
