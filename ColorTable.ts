@@ -361,9 +361,10 @@ class ColorTable {
                             else  {
                                 datatable.data = datatable.data.concat(this.response)
                             }
-                                datatable.updateFilter()
+
                                 datatable.updateLoadingDivs()
                                 datatable.sort(true)
+                                datatable.updateFilter()
 
                             break
                         default:
@@ -1051,6 +1052,7 @@ class ColorTable {
         this.currentStart = 0
         this.filterIndex = []
 
+
         for (let i = 0; i < this.data.length; i++) {
 
             if (this.checkFilter(this.data[i])) {
@@ -1068,8 +1070,6 @@ class ColorTable {
             if (this.currentStart < 0) this.currentStart = 0
 
         }
-
-
 
         if (this.options.filterSelectOptions &&  this.filterIndex.length > 0) {
             let i, j
@@ -1653,8 +1653,8 @@ class ColorTable {
         this.updatePaging()
         this.updateCounter()
         this.table.tBodies[0].innerHTML = ""
-
-            if (this.currentStart >= this.data.length) {
+        const totalPage = this.serverPaging ? this.totalPage : this.data.length
+            if (this.currentStart >= totalPage) {
                 this.table.tBodies[0].innerHTML = `<tr><td colspan="' + this.options.nbColumns + '">
                 <div class="progress progress-striped active">
                 <div class="bar" style="width: 100%;"></div>
@@ -1662,15 +1662,30 @@ class ColorTable {
                 return
             }
 
-            for (let i = 0;
-                 i < this.options.pageSize && i + this.currentStart < this.filterIndex.length;
-                 i++) {
+            if (this.serverPaging) {
 
-                const index = this.filterIndex[this.currentStart + i]
-                const data = this.data[index]
-                this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table,
-                    index, data))
+                for (let i = 0;
+                     i < this.options.pageSize && i < this.filterIndex.length;
+                     i++) {
+
+                    const data = this.data[i]
+                    this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table,
+                        i, data))
+                }
             }
+            else {
+
+                for (let i = 0;
+                     i < this.options.pageSize && i + this.currentStart < this.filterIndex.length;
+                     i++) {
+
+                    const index = this.filterIndex[this.currentStart + i]
+                    const data = this.data[index]
+                    this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table,
+                        index, data))
+                }
+            }
+
 
 
         this.options.afterRefresh.call(this.table)
@@ -1690,8 +1705,7 @@ class ColorTable {
                             datatable.data = this.response.data
 
                             datatable.updateLoadingDivs()
-                            datatable.sort(true)
-
+                            datatable.filter()
                             break
                         default:
                             console.error("ERROR: " + this.status + " - " + this.statusText)
@@ -1717,7 +1731,7 @@ class ColorTable {
                 formData.append('field',field)
                 formData.append('value', value)
             }
-            
+
         xhr.open(this.options.data.type, url, true)
         xhr.responseType = 'json'
         xhr.send(formData)
@@ -1836,7 +1850,7 @@ class ColorTable {
             this.changePlaceHolder()
         }
 
-        this.filter()
+        this.filter(true)
     }
 
     /**

@@ -237,9 +237,9 @@ var ColorTable = /** @class */ (function () {
                             else {
                                 datatable.data = datatable.data.concat(this.response);
                             }
-                            datatable.updateFilter();
                             datatable.updateLoadingDivs();
                             datatable.sort(true);
+                            datatable.updateFilter();
                             break;
                         default:
                             console.error("ERROR: " + this.status + " - " + this.statusText);
@@ -1348,14 +1348,23 @@ var ColorTable = /** @class */ (function () {
         this.updatePaging();
         this.updateCounter();
         this.table.tBodies[0].innerHTML = "";
-        if (this.currentStart >= this.data.length) {
+        var totalPage = this.serverPaging ? this.totalPage : this.data.length;
+        if (this.currentStart >= totalPage) {
             this.table.tBodies[0].innerHTML = "<tr><td colspan=\"' + this.options.nbColumns + '\">\n                <div class=\"progress progress-striped active\">\n                <div class=\"bar\" style=\"width: 100%;\"></div>\n                </div></div></tr>";
             return;
         }
-        for (var i = 0; i < this.options.pageSize && i + this.currentStart < this.filterIndex.length; i++) {
-            var index = this.filterIndex[this.currentStart + i];
-            var data = this.data[index];
-            this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table, index, data));
+        if (this.serverPaging) {
+            for (var i = 0; i < this.options.pageSize && i < this.filterIndex.length; i++) {
+                var data = this.data[i];
+                this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table, i, data));
+            }
+        }
+        else {
+            for (var i = 0; i < this.options.pageSize && i + this.currentStart < this.filterIndex.length; i++) {
+                var index = this.filterIndex[this.currentStart + i];
+                var data = this.data[index];
+                this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table, index, data));
+            }
         }
         this.options.afterRefresh.call(this.table);
     };
@@ -1371,7 +1380,7 @@ var ColorTable = /** @class */ (function () {
                             datatable.totalPage = this.response.total;
                             datatable.data = this.response.data;
                             datatable.updateLoadingDivs();
-                            datatable.sort(true);
+                            datatable.filter();
                             break;
                         default:
                             console.error("ERROR: " + this.status + " - " + this.statusText);
@@ -1394,7 +1403,6 @@ var ColorTable = /** @class */ (function () {
             formData.append('field', field);
             formData.append('value', value);
         }
-        console.log({ url: url });
         xhr.open(this.options.data.type, url, true);
         xhr.responseType = 'json';
         xhr.send(formData);
@@ -1502,7 +1510,7 @@ var ColorTable = /** @class */ (function () {
         if (this.options.filterText) {
             this.changePlaceHolder();
         }
-        this.filter();
+        this.filter(true);
     };
     /**
      *
