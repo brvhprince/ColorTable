@@ -1718,7 +1718,7 @@ class ColorTable {
 
         if (this.options.data.type.toUpperCase() == 'GET') {
                 url +=`?start=${start}&limit=${limit}`
-            
+
             for (let fk in this.filterValues) {
                 url +=`&query[]=${JSON.stringify({[fk]: this.filterValues[fk]})}`
             }
