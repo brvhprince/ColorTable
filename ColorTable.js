@@ -61,14 +61,11 @@ var ColorTable = /** @class */ (function () {
             this.options.data = ajaxOptions;
             var fetchData = true;
             if (fetchData) {
-                if (this.table.dataset.size !== undefined) {
-                    this.options.data.size = parseInt(this.table.dataset.size, 10);
-                }
                 this.data = [];
                 if (this.options.data.serverPaging) {
                     this.serverPaging = true;
                 }
-                this.loadingDiv.innerHTML = "<div class=\"progress datatable-load-bar\">\n                        <div class=\"progress-bar progress-bar-striped active\" style=\"width: 0%;\">\n                        </div></div>";
+                this.loadingDiv.classList.remove(this.options.loadingActiveClass);
                 this.getAjaxDataAsync(0);
             }
         }
@@ -162,7 +159,7 @@ var ColorTable = /** @class */ (function () {
      * @param node The node to removes
      *
      **/
-    ColorTable.prototype.removeNode = function (node) {
+    ColorTable.removeNode = function (node) {
         if (node)
             node.parentNode.removeChild(node);
     };
@@ -188,26 +185,20 @@ var ColorTable = /** @class */ (function () {
      * Hide the loading divs.
      *
      **/
-    ColorTable.prototype.hideLoadingDivs = function () {
-        this.removeNode(this.loadingDiv);
+    ColorTable.prototype.hideLoadingDiv = function () {
+        this.setRefreshTimeout();
+        this.loadingDiv.classList.remove(this.options.loadingActiveClass);
     };
     /**
      *
      * Update the loading divs with the current % of data load (according
      * to this.options.data.size).
      *
-     * Note: Call setRefreshTimeout & hideLoadingDivs if all the data have been loaded.
+     * Note: Call setRefreshTimeout & hideLoadingDiv if all the data have been loaded.
      *
      **/
-    ColorTable.prototype.updateLoadingDivs = function () {
-        if (this.data.length >= this.options.data.size) {
-            this.setRefreshTimeout();
-            this.hideLoadingDivs();
-        }
-        else {
-            this.loadingDiv.querySelector('div.progress .progress-bar').style.width =
-                parseInt(String(100 * this.data.length / this.options.data.size), 10) + '%';
-        }
+    ColorTable.prototype.showLoadingDiv = function () {
+        this.loadingDiv.classList.add(this.options.loadingActiveClass);
     };
     /**
      *
@@ -222,9 +213,10 @@ var ColorTable = /** @class */ (function () {
      *
      **/
     ColorTable.prototype.getAjaxDataAsync = function (start) {
+        this.showLoadingDiv();
         var xhr = new XMLHttpRequest();
         xhr.timeout = this.options.data.timeout;
-        xhr.onreadystatechange = function (datatable, start) {
+        xhr.onreadystatechange = function (datatable) {
             return function () {
                 if (this.readyState === 4) {
                     switch (this.status) {
@@ -237,11 +229,12 @@ var ColorTable = /** @class */ (function () {
                             else {
                                 datatable.data = datatable.data.concat(this.response);
                             }
-                            datatable.updateLoadingDivs();
+                            datatable.hideLoadingDiv();
                             datatable.sort(true);
                             datatable.updateFilter();
                             break;
                         default:
+                            datatable.hideLoadingDiv();
                             console.error("ERROR: " + this.status + " - " + this.statusText);
                             console.log(xhr);
                             alert('An error occurred. Check console for details');
@@ -249,7 +242,7 @@ var ColorTable = /** @class */ (function () {
                     }
                 }
             };
-        }(this, start);
+        }(this);
         var url = this.options.data.url;
         // const limit = this.options.pageSize * this.options.pagingNumberOfPages
         var limit = this.options.pageSize;
@@ -482,7 +475,7 @@ var ColorTable = /** @class */ (function () {
      *
      **/
     ColorTable.prototype.destroyFilter = function () {
-        this.removeNode(this.table.querySelector('.datatable-filter-line'));
+        ColorTable.removeNode(this.table.querySelector('.datatable-filter-line'));
     };
     /**
      *
@@ -1320,8 +1313,6 @@ var ColorTable = /** @class */ (function () {
         }
         this.currentStart = (page - 1) * this.options.pageSize;
         if (this.serverPaging) {
-            // this.updateLoadingDivs()
-            //TODO: Show loading div
             this.getAjaxDataAsync(this.currentStart);
         }
         else {
@@ -1369,6 +1360,7 @@ var ColorTable = /** @class */ (function () {
         this.options.afterRefresh.call(this.table);
     };
     ColorTable.prototype.search = function (field, value) {
+        this.showLoadingDiv();
         var xhr = new XMLHttpRequest();
         xhr.timeout = this.options.data.timeout;
         xhr.onreadystatechange = function (datatable) {
@@ -1379,10 +1371,11 @@ var ColorTable = /** @class */ (function () {
                         case 201:
                             datatable.totalPage = this.response.total;
                             datatable.data = this.response.data;
-                            datatable.updateLoadingDivs();
+                            datatable.hideLoadingDiv();
                             datatable.filter();
                             break;
                         default:
+                            datatable.hideLoadingDiv();
                             console.error("ERROR: " + this.status + " - " + this.statusText);
                             console.log(xhr);
                             break;
@@ -1530,7 +1523,7 @@ var ColorTable = /** @class */ (function () {
         }
         this.destroyFilter();
         this.table.classList.remove(this.options.tableClass);
-        this.removeNode(this.table.tBodies[0]);
+        ColorTable.removeNode(this.table.tBodies[0]);
         this.table.appendChild(document.createElement('tbody'));
         for (i = 0; i < this.data.length; i++) {
             var index = this.filterIndex[this.currentStart + i];
@@ -1731,11 +1724,15 @@ var ColorTable = /** @class */ (function () {
             /**
              *
              */
-            filterInputClass: 'form-control',
+            filterInputClass: 'input',
             /**
              *
              */
-            filterSelectClass: 'form-control',
+            filterSelectClass: 'input',
+            /**
+             *
+             */
+            loadingActiveClass: 'active',
             /**
              * Callback function before the display is reloaded.
              *

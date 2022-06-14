@@ -30,6 +30,7 @@ interface Options {
     nbColumns: number
     forceStrings: boolean
     tableClass: string
+    loadingActiveClass: string
     pagingListClass: string
     pagingDivClass: string
     pagingItemClass: string
@@ -153,9 +154,6 @@ class ColorTable {
 
             if (fetchData) {
 
-                if (this.table.dataset.size !== undefined) {
-                    this.options.data.size = parseInt(this.table.dataset.size, 10)
-                }
 
                 this.data = []
 
@@ -163,9 +161,7 @@ class ColorTable {
                     this.serverPaging = true
                 }
 
-                this.loadingDiv.innerHTML = `<div class="progress datatable-load-bar">
-                        <div class="progress-bar progress-bar-striped active" style="width: 0%;">
-                        </div></div>`
+                this.loadingDiv.classList.remove(this.options.loadingActiveClass)
 
                 this.getAjaxDataAsync(0)
             }
@@ -275,7 +271,7 @@ class ColorTable {
      * @param node The node to removes
      *
      **/
-    private removeNode(node: HTMLElement) {
+    private static removeNode(node: HTMLElement) {
 
         if (node)  node.parentNode.removeChild(node)
     }
@@ -307,8 +303,9 @@ class ColorTable {
      * Hide the loading divs.
      *
      **/
-    private hideLoadingDivs() {
-        this.removeNode(this.loadingDiv)
+    private hideLoadingDiv() {
+        this.setRefreshTimeout()
+        this.loadingDiv.classList.remove(this.options.loadingActiveClass)
     }
 
     /**
@@ -316,18 +313,11 @@ class ColorTable {
      * Update the loading divs with the current % of data load (according
      * to this.options.data.size).
      *
-     * Note: Call setRefreshTimeout & hideLoadingDivs if all the data have been loaded.
+     * Note: Call setRefreshTimeout & hideLoadingDiv if all the data have been loaded.
      *
      **/
-    private updateLoadingDivs() {
-        if (this.data.length >= this.options.data.size) {
-            this.setRefreshTimeout()
-            this.hideLoadingDivs()
-        }
-        else {
-            this.loadingDiv.querySelector<HTMLElement>('div.progress .progress-bar').style.width  =
-                parseInt(String(100 * this.data.length / this.options.data.size), 10) + '%'
-        }
+    private showLoadingDiv() {
+        this.loadingDiv.classList.add(this.options.loadingActiveClass)
 
     }
 
@@ -344,11 +334,11 @@ class ColorTable {
      *
      **/
     private getAjaxDataAsync(start: number) {
-
+        this.showLoadingDiv()
         const xhr = new XMLHttpRequest()
         xhr.timeout = this.options.data.timeout
 
-        xhr.onreadystatechange = function (datatable, start) {
+        xhr.onreadystatechange = function (datatable) {
             return function () {
                 if (this.readyState === 4) {
                     switch (this.status) {
@@ -362,12 +352,13 @@ class ColorTable {
                                 datatable.data = datatable.data.concat(this.response)
                             }
 
-                                datatable.updateLoadingDivs()
+                                datatable.hideLoadingDiv()
                                 datatable.sort(true)
                                 datatable.updateFilter()
 
                             break
                         default:
+                            datatable.hideLoadingDiv()
                             console.error("ERROR: " + this.status + " - " + this.statusText)
                             console.log(xhr)
                             alert('An error occurred. Check console for details')
@@ -375,7 +366,7 @@ class ColorTable {
                     }
                 }
             }
-        } (this, start)
+        } (this)
 
         let url = this.options.data.url
         // const limit = this.options.pageSize * this.options.pagingNumberOfPages
@@ -664,7 +655,7 @@ class ColorTable {
      *
      **/
     private destroyFilter() {
-        this.removeNode(this.table.querySelector('.datatable-filter-line'))
+        ColorTable.removeNode(this.table.querySelector('.datatable-filter-line'))
     }
 
     /**
@@ -1623,8 +1614,7 @@ class ColorTable {
         this.currentStart = (page - 1) * this.options.pageSize
 
         if (this.serverPaging) {
-            // this.updateLoadingDivs()
-            //TODO: Show loading div
+
             this.getAjaxDataAsync(this.currentStart)
         }
         else {
@@ -1693,8 +1683,10 @@ class ColorTable {
     }
 
     private search (field: string, value: any) {
+        this.showLoadingDiv()
         const xhr = new XMLHttpRequest()
         xhr.timeout = this.options.data.timeout
+
         xhr.onreadystatechange = function (datatable) {
             return function () {
                 if (this.readyState == 4) {
@@ -1704,10 +1696,11 @@ class ColorTable {
                             datatable.totalPage = this.response.total
                             datatable.data = this.response.data
 
-                            datatable.updateLoadingDivs()
+                            datatable.hideLoadingDiv()
                             datatable.filter()
                             break
                         default:
+                            datatable.hideLoadingDiv()
                             console.error("ERROR: " + this.status + " - " + this.statusText)
                             console.log(xhr)
                             break
@@ -1873,7 +1866,7 @@ class ColorTable {
 
         this.destroyFilter()
         this.table.classList.remove(this.options.tableClass)
-        this.removeNode(this.table.tBodies[0])
+        ColorTable.removeNode(this.table.tBodies[0])
         this.table.appendChild(document.createElement('tbody'))
 
         for (i = 0; i < this.data.length; i++) {
@@ -2110,12 +2103,17 @@ class ColorTable {
             /**
              *
              */
-            filterInputClass: 'form-control',
+            filterInputClass: 'input',
 
             /**
              *
              */
-            filterSelectClass: 'form-control',
+            filterSelectClass: 'input',
+
+            /**
+             *
+             */
+            loadingActiveClass: 'active',
 
             /**
              * Callback function before the display is reloaded.
