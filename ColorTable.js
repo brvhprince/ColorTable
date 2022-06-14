@@ -526,7 +526,7 @@ var ColorTable = /** @class */ (function () {
                 typeWatch(function () {
                     datatable.filterValues[field] = val;
                     if (datatable.serverPaging) {
-                        datatable.search(field, val);
+                        datatable.search();
                     }
                     else {
                         datatable.filter();
@@ -731,7 +731,7 @@ var ColorTable = /** @class */ (function () {
                 var field = this.dataset.filter;
                 datatable.filterValues[field] = multiple ? val : ((empty && !val) ? allKeys : [val]);
                 if (datatable.serverPaging) {
-                    datatable.search(field, val);
+                    datatable.search();
                 }
                 else {
                     datatable.filter();
@@ -1359,7 +1359,8 @@ var ColorTable = /** @class */ (function () {
         }
         this.options.afterRefresh.call(this.table);
     };
-    ColorTable.prototype.search = function (field, value) {
+    ColorTable.prototype.search = function () {
+        var _a, _b;
         this.showLoadingDiv();
         var xhr = new XMLHttpRequest();
         xhr.timeout = this.options.data.timeout;
@@ -1388,13 +1389,17 @@ var ColorTable = /** @class */ (function () {
         var limit = this.options.pageSize;
         var start = (this.currentStart + 1) * limit;
         if (this.options.data.type.toUpperCase() == 'GET') {
-            url += "?start=".concat(start, "&limit=").concat(limit, "&field=").concat(field, "&value=").concat(value);
+            url += "?start=".concat(start, "&limit=").concat(limit);
+            for (var fk in this.filterValues) {
+                url += "&query[]=".concat(JSON.stringify((_a = {}, _a[fk] = this.filterValues[fk], _a)));
+            }
         }
         else {
             formData.append('start', start.toString());
             formData.append('limit', limit.toString());
-            formData.append('field', field);
-            formData.append('value', value);
+            for (var fk in this.filterValues) {
+                formData.append('query[]', JSON.stringify((_b = {}, _b[fk] = this.filterValues[fk], _b)));
+            }
         }
         xhr.open(this.options.data.type, url, true);
         xhr.responseType = 'json';

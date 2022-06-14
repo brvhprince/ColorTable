@@ -717,7 +717,7 @@ class ColorTable {
                     datatable.filterValues[field] = val
 
                     if (datatable.serverPaging) {
-                        datatable.search(field, val)
+                        datatable.search()
                     }
                     else {
                         datatable.filter()
@@ -945,7 +945,7 @@ class ColorTable {
                 const field = this.dataset.filter
                 datatable.filterValues[field] = multiple ? val : ((empty && !val) ? allKeys : [val])
                 if (datatable.serverPaging) {
-                    datatable.search(field, val)
+                    datatable.search()
                 }
                 else {
                     datatable.filter()
@@ -1682,7 +1682,7 @@ class ColorTable {
 
     }
 
-    private search (field: string, value: any) {
+    private search () {
         this.showLoadingDiv()
         const xhr = new XMLHttpRequest()
         xhr.timeout = this.options.data.timeout
@@ -1715,15 +1715,23 @@ class ColorTable {
         const limit = this.options.pageSize
         let start = (this.currentStart + 1) * limit
 
-            if (this.options.data.type.toUpperCase() == 'GET') {
-                url +=`?start=${start}&limit=${limit}&field=${field}&value=${value}`
+
+        if (this.options.data.type.toUpperCase() == 'GET') {
+                url +=`?start=${start}&limit=${limit}`
+            
+            for (let fk in this.filterValues) {
+                url +=`&query[]=${JSON.stringify({[fk]: this.filterValues[fk]})}`
             }
-            else {
+        }
+        else {
                 formData.append('start', start.toString())
                 formData.append('limit', limit.toString())
-                formData.append('field',field)
-                formData.append('value', value)
-            }
+
+                for (let fk in this.filterValues) {
+                    formData.append('query[]', JSON.stringify({[fk]: this.filterValues[fk]}))
+                }
+
+        }
 
         xhr.open(this.options.data.type, url, true)
         xhr.responseType = 'json'
