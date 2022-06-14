@@ -233,6 +233,7 @@ var ColorTable = /** @class */ (function () {
                             if (datatable.serverPaging) {
                                 datatable.totalPage = this.response.total;
                                 datatable.data = this.response.data;
+                                datatable.updateFilter();
                             }
                             else {
                                 datatable.data = datatable.data.concat(this.response);
@@ -619,7 +620,7 @@ var ColorTable = /** @class */ (function () {
     ColorTable.prototype.createSelectFilter = function (field) {
         var option;
         var opt = this.options.filters[field];
-        var values = {}, selected = [], multiple = false, empty = true, emptyValue = this.options.filterEmptySelect;
+        var values, selected = [], multiple = false, empty = true, emptyValue = this.options.filterEmptySelect;
         var tag;
         if (opt instanceof HTMLSelectElement) {
             tag = opt;
@@ -668,6 +669,7 @@ var ColorTable = /** @class */ (function () {
                 selected = multiple ? ColorTable._keys(values) : [];
             }
         }
+        console.log({ field: field });
         var select = tag ? tag : document.createElement('select');
         if (multiple) {
             select.multiple = true;
@@ -739,7 +741,7 @@ var ColorTable = /** @class */ (function () {
             select.dataset.filterType = 'function';
         }
         else {
-            this.addFilter(field, function (aKeys, datatable) {
+            this.addFilter(field, function (aKeys) {
                 return function (data, val) {
                     if (!val)
                         return false;
@@ -747,7 +749,7 @@ var ColorTable = /** @class */ (function () {
                         return true;
                     return ColorTable._isIn(data, val);
                 };
-            }(allKeys, this));
+            }(allKeys));
             select.dataset.filterType = 'default';
         }
         this.addClass(select, this.options.filterSelectClass);
@@ -816,10 +818,12 @@ var ColorTable = /** @class */ (function () {
         this.filterIndex = [];
         for (var i = 0; i < this.data.length; i++) {
             if (this.checkFilter(this.data[i])) {
+                console.log('pased checks');
                 // @ts-ignore
                 this.filterIndex.push(i);
             }
         }
+        console.log('fIndex', this.filterIndex);
         if (keepCurrentPage) {
             this.currentStart = oldCurrentStart;
             var totalPage = this.serverPaging ? this.totalPage : this.filterIndex.length;
@@ -929,18 +933,15 @@ var ColorTable = /** @class */ (function () {
      *
      **/
     ColorTable.prototype.checkFilter = function (data) {
-        var ok = true;
         for (var fk in this.filters) {
             var currentData = fk[0] === '_' ? data : data[fk];
             if (typeof currentData === "string") {
                 currentData = ColorTable.stripTags(currentData);
             }
-            if (!this.filters[fk](currentData, this.filterValues[fk])) {
-                ok = false;
-                break;
-            }
+            if (!this.filters[fk](currentData, this.filterValues[fk]))
+                return false;
         }
-        return ok;
+        return true;
     };
     /**
      *
@@ -962,6 +963,7 @@ var ColorTable = /** @class */ (function () {
      **/
     ColorTable.prototype.getFilterOptions = function (field) {
         var options = {}, values = [];
+        console.log('my data', this.data);
         for (var key in this.data) {
             if (this.data[key][field] !== '') {
                 values.push(this.data[key][field]);
@@ -982,8 +984,12 @@ var ColorTable = /** @class */ (function () {
      *
      **/
     ColorTable.prototype.destroySort = function () {
-        var sort = document.querySelector('thead th');
-        sort.classList.remove('sorting sorting-asc sorting-desc');
+        var _this = this;
+        var sort = document.querySelectorAll('thead th');
+        sort.forEach(function (element) {
+            element.classList.remove('sorting', 'sorting-asc', 'sorting-desc');
+            element.removeEventListener('click', _this.sortListener, false);
+        });
         // sort.removeEventListener('click',data)
     };
     /**
@@ -1022,7 +1028,7 @@ var ColorTable = /** @class */ (function () {
                     ths[i].classList.add('sorting');
                 }
                 countTH++;
-                ths[i].addEventListener('click', function () {
+                this.sortListener = function () {
                     if (this.dataset.sort) {
                         if (this.classList.contains('sorting-asc')) {
                             dataTable.options.sortDir = 'desc';
@@ -1048,7 +1054,8 @@ var ColorTable = /** @class */ (function () {
                         dataTable.sort();
                         dataTable.refresh();
                     }
-                }, false);
+                };
+                ths[i].addEventListener('click', this.sortListener, false);
             }
         }
     };
@@ -1335,22 +1342,14 @@ var ColorTable = /** @class */ (function () {
         this.updatePaging();
         this.updateCounter();
         this.table.tBodies[0].innerHTML = "";
-        if (this.serverPaging) {
-            for (var i = 0; i < this.options.pageSize && i + this.currentStart < this.totalPage; i++) {
-                var data = this.data[i];
-                this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table, i, data));
-            }
+        if (this.currentStart >= this.data.length) {
+            this.table.tBodies[0].innerHTML = "<tr><td colspan=\"' + this.options.nbColumns + '\">\n                <div class=\"progress progress-striped active\">\n                <div class=\"bar\" style=\"width: 100%;\"></div>\n                </div></div></tr>";
+            return;
         }
-        else {
-            if (this.currentStart >= this.data.length) {
-                this.table.tBodies[0].innerHTML = "<tr><td colspan=\"' + this.options.nbColumns + '\">\n                <div class=\"progress progress-striped active\">\n                <div class=\"bar\" style=\"width: 100%;\"></div>\n                </div></div></tr>";
-                return;
-            }
-            for (var i = 0; i < this.options.pageSize && i + this.currentStart < this.filterIndex.length; i++) {
-                var index = this.filterIndex[this.currentStart + i];
-                var data = this.data[index];
-                this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table, index, data));
-            }
+        for (var i = 0; i < this.options.pageSize && i + this.currentStart < this.filterIndex.length; i++) {
+            var index = this.filterIndex[this.currentStart + i];
+            var data = this.data[index];
+            this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table, index, data));
         }
         this.options.afterRefresh.call(this.table);
     };
@@ -1441,6 +1440,25 @@ var ColorTable = /** @class */ (function () {
             this.createFilter();
         }
         if ('filterText' in options) {
+            this.changePlaceHolder();
+        }
+        this.filter();
+    };
+    /**
+     * Update filters after fetch
+     */
+    ColorTable.prototype.updateFilter = function () {
+        console.log('called');
+        if (this.options.sort) {
+            this.destroySort();
+            this.createSort();
+            this.triggerSort();
+        }
+        if (this.options.filters) {
+            this.destroyFilter();
+            this.createFilter();
+        }
+        if (this.options.filterText) {
             this.changePlaceHolder();
         }
         this.filter();

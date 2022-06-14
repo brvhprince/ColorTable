@@ -78,6 +78,7 @@ class ColorTable {
     filters?: Array<any>
     filterTags?: Array<any>
     filterValues?: Array<any>
+    sortListener?: EventListenerOrEventListenerObject
 
     constructor(table: HTMLTableElement, options: Options) {
 
@@ -356,6 +357,7 @@ class ColorTable {
                             if(datatable.serverPaging) {
                                 datatable.totalPage = this.response.total
                                 datatable.data = this.response.data
+                                datatable.updateFilter()
                             }
                             else  {
                                 datatable.data = datatable.data.concat(this.response)
@@ -718,7 +720,6 @@ class ColorTable {
             return function () {
                 // @ts-ignore
                 const val = this.value.toUpperCase()
-
                 // @ts-ignore
                 const field = this.dataset.filter
 
@@ -823,7 +824,7 @@ class ColorTable {
         let option
 
         const opt = this.options.filters[field]
-        let values = {}, selected = [], multiple = false,
+        let values: {}, selected = [], multiple = false,
             empty = true, emptyValue = this.options.filterEmptySelect
 
         let tag
@@ -876,7 +877,7 @@ class ColorTable {
                 selected = multiple ? ColorTable._keys(values) : []
             }
         }
-
+        console.log({field})
         const select = tag ? tag : document.createElement('select')
 
         if (multiple) {
@@ -955,14 +956,14 @@ class ColorTable {
             select.dataset.filterType = 'function'
         }
         else {
-            this.addFilter(field, function (aKeys, datatable) {
+            this.addFilter(field, function (aKeys) {
                 return function (data, val) {
                     if (!val) return false
                     if (val == aKeys && !data) return true
 
                     return ColorTable._isIn(data, val)
                 }
-            } (allKeys, this))
+            } (allKeys))
             select.dataset.filterType = 'default'
         }
 
@@ -1039,13 +1040,15 @@ class ColorTable {
         const oldCurrentStart = this.currentStart
         this.currentStart = 0
         this.filterIndex = []
+
         for (let i = 0; i < this.data.length; i++) {
             if (this.checkFilter(this.data[i])) {
+                console.log('pased checks')
                 // @ts-ignore
                 this.filterIndex.push(i)
             }
         }
-
+        console.log('fIndex',this.filterIndex)
         if (keepCurrentPage) {
             this.currentStart = oldCurrentStart
 
@@ -1177,19 +1180,17 @@ class ColorTable {
      *
      **/
     private checkFilter(data: Array<any>) {
-        let ok = true
+
         for (const fk in this.filters) {
             let currentData = fk[0] === '_' ? data : data[fk]
 
             if (typeof currentData === "string") {
                 currentData = ColorTable.stripTags(currentData)
             }
-            if (!this.filters[fk](currentData, this.filterValues[fk])) {
-                ok = false
-                break
-            }
+
+            if (!this.filters[fk](currentData, this.filterValues[fk])) return false
         }
-        return ok
+        return true
     }
 
     /**
@@ -1213,6 +1214,7 @@ class ColorTable {
      **/
     private getFilterOptions (field: string) {
         const options = {}, values = []
+        console.log('my data', this.data)
         for (const key in this.data) {
             if (this.data[key][field] !== '') {
                 values.push(this.data[key][field])
@@ -1234,9 +1236,12 @@ class ColorTable {
      *
      **/
     private destroySort() {
-        let sort = document.querySelector('thead th')
+        let sort = document.querySelectorAll('thead th')
 
-        sort.classList.remove('sorting sorting-asc sorting-desc')
+        sort.forEach(element => {
+            element.classList.remove('sorting', 'sorting-asc', 'sorting-desc')
+            element.removeEventListener('click', this.sortListener, false)
+        })
         // sort.removeEventListener('click',data)
     }
 
@@ -1281,8 +1286,7 @@ class ColorTable {
                 }
 
                 countTH++
-
-                ths[i].addEventListener('click', function () {
+                this.sortListener = function () {
                     if (this.dataset.sort) {
                         if (this.classList.contains('sorting-asc')) {
                             dataTable.options.sortDir = 'desc'
@@ -1310,7 +1314,9 @@ class ColorTable {
                         dataTable.sort()
                         dataTable.refresh()
                     }
-                }, false)
+                }
+
+                ths[i].addEventListener('click', this.sortListener, false)
 
             }
 
@@ -1610,7 +1616,6 @@ class ColorTable {
             // this.updateLoadingDivs()
             //TODO: Show loading div
             this.getAjaxDataAsync(this.currentStart)
-
         }
         else {
             this.refresh()
@@ -1639,19 +1644,6 @@ class ColorTable {
         this.updateCounter()
         this.table.tBodies[0].innerHTML = ""
 
-        if (this.serverPaging) {
-
-            for (let i = 0;
-                 i < this.options.pageSize && i + this.currentStart < this.totalPage;
-                 i++) {
-
-                const data = this.data[i]
-                this.table.tBodies[0].appendChild(this.options.lineFormat.call(this.table,
-                    i, data))
-            }
-        }
-
-        else {
             if (this.currentStart >= this.data.length) {
                 this.table.tBodies[0].innerHTML = `<tr><td colspan="' + this.options.nbColumns + '">
                 <div class="progress progress-striped active">
@@ -1670,8 +1662,9 @@ class ColorTable {
                     index, data))
             }
 
-        }
+
         this.options.afterRefresh.call(this.table)
+
     }
 
     public reload() {
@@ -1720,7 +1713,7 @@ class ColorTable {
         if (key in this.options) {
             this.options[key] = val
             if (key === 'sort') {
-                this.destroySort()
+                 this.destroySort()
                 this.createSort()
                 this.triggerSort()
             }
@@ -1754,7 +1747,7 @@ class ColorTable {
             }
         }
         if ('sort' in options) {
-            this.destroySort()
+             this.destroySort()
             this.createSort()
             this.triggerSort()
         }
@@ -1769,6 +1762,29 @@ class ColorTable {
         if ('filterText' in options) {
             this.changePlaceHolder()
         }
+        this.filter()
+    }
+
+    /**
+     * Update filters after fetch
+     */
+    private updateFilter() {
+        console.log('called')
+
+        if (this.options.sort) {
+             this.destroySort()
+            this.createSort()
+            this.triggerSort()
+        }
+
+        if (this.options.filters) {
+            this.destroyFilter()
+            this.createFilter()
+        }
+        if (this.options.filterText) {
+            this.changePlaceHolder()
+        }
+
         this.filter()
     }
 
