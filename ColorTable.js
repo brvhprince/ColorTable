@@ -233,11 +233,11 @@ var ColorTable = /** @class */ (function () {
                             if (datatable.serverPaging) {
                                 datatable.totalPage = this.response.total;
                                 datatable.data = this.response.data;
-                                datatable.updateFilter();
                             }
                             else {
                                 datatable.data = datatable.data.concat(this.response);
                             }
+                            datatable.updateFilter();
                             datatable.updateLoadingDivs();
                             datatable.sort(true);
                             break;
@@ -259,7 +259,7 @@ var ColorTable = /** @class */ (function () {
                 url += '?start=' + start + '&limit=' + limit;
             }
             else {
-                formData.append('offset', start.toString());
+                formData.append('start', start.toString());
                 formData.append('limit', limit.toString());
             }
         }
@@ -532,7 +532,12 @@ var ColorTable = /** @class */ (function () {
                 var field = this.dataset.filter;
                 typeWatch(function () {
                     datatable.filterValues[field] = val;
-                    datatable.filter();
+                    if (datatable.serverPaging) {
+                        datatable.search(field, val);
+                    }
+                    else {
+                        datatable.filter();
+                    }
                 }, 300);
             };
         }(this);
@@ -669,7 +674,6 @@ var ColorTable = /** @class */ (function () {
                 selected = multiple ? ColorTable._keys(values) : [];
             }
         }
-        console.log({ field: field });
         var select = tag ? tag : document.createElement('select');
         if (multiple) {
             select.multiple = true;
@@ -733,7 +737,12 @@ var ColorTable = /** @class */ (function () {
                 }
                 var field = this.dataset.filter;
                 datatable.filterValues[field] = multiple ? val : ((empty && !val) ? allKeys : [val]);
-                datatable.filter();
+                if (datatable.serverPaging) {
+                    datatable.search(field, val);
+                }
+                else {
+                    datatable.filter();
+                }
             };
         }(allKeys, multiple, empty, this);
         if (opt instanceof Object && opt.fn instanceof Function) {
@@ -818,12 +827,10 @@ var ColorTable = /** @class */ (function () {
         this.filterIndex = [];
         for (var i = 0; i < this.data.length; i++) {
             if (this.checkFilter(this.data[i])) {
-                console.log('pased checks');
                 // @ts-ignore
                 this.filterIndex.push(i);
             }
         }
-        console.log('fIndex', this.filterIndex);
         if (keepCurrentPage) {
             this.currentStart = oldCurrentStart;
             var totalPage = this.serverPaging ? this.totalPage : this.filterIndex.length;
@@ -963,7 +970,6 @@ var ColorTable = /** @class */ (function () {
      **/
     ColorTable.prototype.getFilterOptions = function (field) {
         var options = {}, values = [];
-        console.log('my data', this.data);
         for (var key in this.data) {
             if (this.data[key][field] !== '') {
                 values.push(this.data[key][field]);
@@ -1353,6 +1359,46 @@ var ColorTable = /** @class */ (function () {
         }
         this.options.afterRefresh.call(this.table);
     };
+    ColorTable.prototype.search = function (field, value) {
+        var xhr = new XMLHttpRequest();
+        xhr.timeout = this.options.data.timeout;
+        xhr.onreadystatechange = function (datatable) {
+            return function () {
+                if (this.readyState == 4) {
+                    switch (this.status) {
+                        case 200:
+                        case 201:
+                            datatable.totalPage = this.response.total;
+                            datatable.data = this.response.data;
+                            datatable.updateLoadingDivs();
+                            datatable.sort(true);
+                            break;
+                        default:
+                            console.error("ERROR: " + this.status + " - " + this.statusText);
+                            console.log(xhr);
+                            break;
+                    }
+                }
+            };
+        }(this);
+        var url = this.options.data.url;
+        var formData = new FormData();
+        var limit = this.options.pageSize;
+        var start = (this.currentStart + 1) * limit;
+        if (this.options.data.type.toUpperCase() == 'GET') {
+            url += "?start=".concat(start, "&limit=").concat(limit, "&field=").concat(field, "&value=").concat(value);
+        }
+        else {
+            formData.append('start', start.toString());
+            formData.append('limit', limit.toString());
+            formData.append('field', field);
+            formData.append('value', value);
+        }
+        console.log({ url: url });
+        xhr.open(this.options.data.type, url, true);
+        xhr.responseType = 'json';
+        xhr.send(formData);
+    };
     ColorTable.prototype.reload = function () {
         var xhr = new XMLHttpRequest();
         xhr.timeout = this.options.data.timeout;
@@ -1364,13 +1410,9 @@ var ColorTable = /** @class */ (function () {
                             datatable.data = this.response;
                             datatable.sort(true);
                             break;
-                        case 404:
-                        case 500:
+                        default:
                             console.error("ERROR: " + this.status + " - " + this.statusText);
                             console.log(xhr);
-                            break;
-                        default:
-                            datatable.reload();
                             break;
                     }
                 }
@@ -1448,7 +1490,6 @@ var ColorTable = /** @class */ (function () {
      * Update filters after fetch
      */
     ColorTable.prototype.updateFilter = function () {
-        console.log('called');
         if (this.options.sort) {
             this.destroySort();
             this.createSort();

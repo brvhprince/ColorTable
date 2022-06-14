@@ -357,12 +357,11 @@ class ColorTable {
                             if(datatable.serverPaging) {
                                 datatable.totalPage = this.response.total
                                 datatable.data = this.response.data
-                                datatable.updateFilter()
                             }
                             else  {
                                 datatable.data = datatable.data.concat(this.response)
                             }
-
+                                datatable.updateFilter()
                                 datatable.updateLoadingDivs()
                                 datatable.sort(true)
 
@@ -388,7 +387,7 @@ class ColorTable {
                 url += '?start=' + start + '&limit=' + limit
             }
             else {
-                formData.append('offset', start.toString())
+                formData.append('start', start.toString())
                 formData.append('limit', limit.toString())
             }
         }
@@ -407,7 +406,6 @@ class ColorTable {
      **/
     private getLastPageNumber() {
         let lastPage = this.serverPaging ? this.totalPage : this.filterIndex.length
-
         return parseInt(String(Math.ceil(lastPage / this.options.pageSize)), 10)
     }
 
@@ -725,7 +723,14 @@ class ColorTable {
 
                 typeWatch(function () {
                     datatable.filterValues[field] = val
-                    datatable.filter()
+
+                    if (datatable.serverPaging) {
+                        datatable.search(field, val)
+                    }
+                    else {
+                        datatable.filter()
+                    }
+
                 }, 300)
             }
         } (this)
@@ -877,7 +882,7 @@ class ColorTable {
                 selected = multiple ? ColorTable._keys(values) : []
             }
         }
-        console.log({field})
+
         const select = tag ? tag : document.createElement('select')
 
         if (multiple) {
@@ -947,7 +952,12 @@ class ColorTable {
                 }
                 const field = this.dataset.filter
                 datatable.filterValues[field] = multiple ? val : ((empty && !val) ? allKeys : [val])
-                datatable.filter()
+                if (datatable.serverPaging) {
+                    datatable.search(field, val)
+                }
+                else {
+                    datatable.filter()
+                }
             }
         } (allKeys, multiple, empty, this)
 
@@ -1042,13 +1052,13 @@ class ColorTable {
         this.filterIndex = []
 
         for (let i = 0; i < this.data.length; i++) {
+
             if (this.checkFilter(this.data[i])) {
-                console.log('pased checks')
                 // @ts-ignore
                 this.filterIndex.push(i)
             }
         }
-        console.log('fIndex',this.filterIndex)
+
         if (keepCurrentPage) {
             this.currentStart = oldCurrentStart
 
@@ -1214,7 +1224,7 @@ class ColorTable {
      **/
     private getFilterOptions (field: string) {
         const options = {}, values = []
-        console.log('my data', this.data)
+
         for (const key in this.data) {
             if (this.data[key][field] !== '') {
                 values.push(this.data[key][field])
@@ -1667,6 +1677,53 @@ class ColorTable {
 
     }
 
+    private search (field: string, value: any) {
+        const xhr = new XMLHttpRequest()
+        xhr.timeout = this.options.data.timeout
+        xhr.onreadystatechange = function (datatable) {
+            return function () {
+                if (this.readyState == 4) {
+                    switch (this.status) {
+                        case 200:
+                        case 201:
+                            datatable.totalPage = this.response.total
+                            datatable.data = this.response.data
+
+                            datatable.updateLoadingDivs()
+                            datatable.sort(true)
+
+                            break
+                        default:
+                            console.error("ERROR: " + this.status + " - " + this.statusText)
+                            console.log(xhr)
+                            break
+                    }
+                }
+            }
+        } (this)
+
+
+        let url = this.options.data.url
+        const formData = new FormData()
+        const limit = this.options.pageSize
+        let start = (this.currentStart + 1) * limit
+
+            if (this.options.data.type.toUpperCase() == 'GET') {
+                url +=`?start=${start}&limit=${limit}&field=${field}&value=${value}`
+            }
+            else {
+                formData.append('start', start.toString())
+                formData.append('limit', limit.toString())
+                formData.append('field',field)
+                formData.append('value', value)
+            }
+            
+        xhr.open(this.options.data.type, url, true)
+        xhr.responseType = 'json'
+        xhr.send(formData)
+
+    }
+
     public reload() {
         const xhr = new XMLHttpRequest()
         xhr.timeout = this.options.data.timeout
@@ -1678,15 +1735,10 @@ class ColorTable {
                             datatable.data = this.response
                             datatable.sort(true)
 
-                            break;
-                        case 404:
-                        case 500:
-                            console.error("ERROR: " + this.status + " - " + this.statusText)
+                            break
+                        default: console.error("ERROR: " + this.status + " - " + this.statusText)
                             console.log(xhr)
-                            break;
-                        default:
-                            datatable.reload()
-                            break;
+                            break
                     }
                 }
             }
@@ -1769,7 +1821,6 @@ class ColorTable {
      * Update filters after fetch
      */
     private updateFilter() {
-        console.log('called')
 
         if (this.options.sort) {
              this.destroySort()
