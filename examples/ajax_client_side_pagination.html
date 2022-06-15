@@ -10,5 +10,94 @@
         Search and filtering is done on client side. But data is fetched from server
     </p>
 </div>
+
+<div class="container">
+    <div class="table-responsive">
+        <table id="datatable" class="table table-hover" >
+            <thead>
+            <tr>
+                <th>Email</th>
+                <th>Transaction</th>
+                <th>Method</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="container">
+    <div class="d-flex justify-content-between">
+        <div class="datatable-info">
+            <span></span>
+        </div>
+        <nav id="paging-first-datatable" aria-label="Page navigation example">
+
+        </nav>
+    </div>
+
+</div>
+
+<div class="loading"></div>
+
+<script  src="../dist/colortable.min.js"></script>
+<script>
+    window.datatable = ColorTable.init(document.querySelector("#datatable"), {
+        sort: {
+            email: false,
+            transaction: false,
+            method: false,
+            amount: true,
+            status: true,
+            action: true,
+        },
+        filters: {
+            email: true,
+            transaction: true,
+            method: "select",
+            amount: false,
+            status: "select",
+            action: false,
+        },
+        filterText: "Search... ",
+        counterText: function (
+            currentPage,
+            totalPage,
+            firstRow,
+            lastRow,
+            totalRow
+        ) {
+            return (
+                "Showing " +
+                firstRow +
+                " to " +
+                lastRow +
+                " of " +
+                totalRow +
+                " items."
+            );
+        },
+        counterDivSelector: ".datatable-info span",
+        pagingDivSelector: "#paging-first-datatable",
+        pagingItemClass: 'page-item',
+        pagingLinkClass: 'page-link',
+        filterInputClass: 'form-control',
+        filterSelectClass: 'form-control',
+        pagingListClass: 'pagination justify-content-end',
+        firstPage: false,
+        lastPage: false,
+        loadingDivSelector: ".loading",
+        loadingActiveClass: "has-loader-active",
+        data: {
+            url: "http://localhost/pensingle/get.php",
+            type: "post",
+            serverPaging: false,
+        }
+    })
+
+</script>
 </body>
 </html>
