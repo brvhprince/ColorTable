@@ -114,7 +114,7 @@ class ColorTable {
             const div = this.pagingDivs[i]
             this.addClass(div, 'pagination-datatables')
             this.addClass(div, this.options.pagingDivClass)
-            const ul = document.createElement('ul');
+            const ul = document.createElement('ul')
             this.addClass(ul, this.options.pagingListClass)
             div.appendChild(ul)
         }
@@ -153,7 +153,6 @@ class ColorTable {
             const fetchData = true
 
             if (fetchData) {
-
 
                 this.data = []
 
@@ -278,7 +277,7 @@ class ColorTable {
 
     /**
      *
-     * Clear size option and set timeout (if specified) for refresh.
+     * Set timeout (if specified) for refresh.
      *
      * Note: This function should be call when the ajax loading is finished.
      *
@@ -300,7 +299,8 @@ class ColorTable {
 
     /**
      *
-     * Hide the loading divs.
+     * Hide the loading div.
+     * Note: Call setRefreshTimeout & hideLoadingDiv if all the data have been loaded.
      *
      **/
     private hideLoadingDiv() {
@@ -310,11 +310,7 @@ class ColorTable {
 
     /**
      *
-     * Update the loading divs with the current % of data load (according
-     * to this.options.data.size).
-     *
-     * Note: Call setRefreshTimeout & hideLoadingDiv if all the data have been loaded.
-     *
+     * Show the loading div for ajax requests
      **/
     private showLoadingDiv() {
         this.loadingDiv.classList.add(this.options.loadingActiveClass)
@@ -323,14 +319,13 @@ class ColorTable {
 
     /**
      *
-     * Get data according to this.options.data, asynchronously, recursively.
+     * Get data according to this.options.data, asynchronously.
      *
      * @param start The first offset to send to the server
      *
+     * @update data Concat/set data received from server to old data
      *
-     * @update data Concat data received from server to old data
-     *
-     * Note: Each call increment start by pageSize * pagingNumberOfPages.
+     * Note: Each call increment start by pageSize.
      *
      **/
     private getAjaxDataAsync(start: number) {
@@ -369,7 +364,7 @@ class ColorTable {
         } (this)
 
         let url = this.options.data.url
-        // const limit = this.options.pageSize * this.options.pagingNumberOfPages
+
         const limit = this.options.pageSize
 
         const formData = new FormData()
@@ -439,7 +434,7 @@ class ColorTable {
     private updatePaging() {
 
         /* Be careful if you change something here, all this part calculate the first
-                 and last page to display. I chose to center the current page, it's more beautiful... */
+                 and last page to display */
 
         const totalPage = this.serverPaging ? this.totalPage : this.filterIndex.length
         const nbPages = this.options.pagingNumberOfPages
@@ -993,7 +988,7 @@ class ColorTable {
         }
 
         if (this.options.filters) {
-            const filterLine = false
+
             const tr = document.createElement('tr')
             tr.classList.add('datatable-filter-line')
 
@@ -1327,7 +1322,7 @@ class ColorTable {
     /**
      *
      * Trigger sort event on the table: If options.sort is a function,
-     * sort the table, otherwiae trigger click on the column specified by options.sortKey.
+     * sort the table, otherwise trigger click on the column specified by options.sortKey.
      *
      **/
     private triggerSort () {
@@ -1416,7 +1411,7 @@ class ColorTable {
      * @param id An identifier for the element (see this.options.identify)
      *
      **/
-    private row (id) {
+    public row (id) {
         if (this.options.identify === true) {
             return this.data[id]
         }
@@ -1429,7 +1424,7 @@ class ColorTable {
      *
      *
      **/
-    private all(filter) {
+    public all(filter) {
         if (typeof filter === "undefined"
             || filter === true) {
             return this.data
@@ -1502,7 +1497,7 @@ class ColorTable {
      * @param id An identifier for the element (see this.options.identify)
      *
      **/
-    private deleteRow(id) {
+    public deleteRow(id) {
         const oldCurrentStart = this.currentStart
         const index = this.indexOf(id)
 
@@ -1531,7 +1526,7 @@ class ColorTable {
      * Delete all elements matching the filter arg.
      *
      **/
-    private deleteAll(filter) {
+    public deleteAll(filter) {
         const oldCurrentStart = this.currentStart
         const newData = []
 
@@ -1566,7 +1561,7 @@ class ColorTable {
      * @param data The new data (identifier value will be set to id)
      *
      **/
-    private updateRow(id, data) {
+    public updateRow(id, data) {
         const index = this.indexOf(id)
 
         if (typeof this.syncData !== "undefined") {
@@ -1628,7 +1623,7 @@ class ColorTable {
      * @return The current page
      *
      **/
-    private getCurrentPage() {
+    public getCurrentPage() {
         return this.currentStart / this.options.pageSize + 1
     }
 
@@ -1768,7 +1763,7 @@ class ColorTable {
 
     /**
      *
-     * Set a option and refresh the table if necessary.
+     * Set an option and refresh the table if necessary.
      *
      * @param key The name of the option to change
      * @param val The new option value

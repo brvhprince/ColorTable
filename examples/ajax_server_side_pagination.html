@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AJAX Source Server Side Paging</title>
+</head>
+<!-- CSS only -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+<body>
+<div class="container">
+    <p class="m-5 text-center">
+        Search and filtering is done in server side. Check docs for parameters passed
+    </p>
+</div>
+<div class="container">
+    <div class="table-responsive">
+        <table id="datatable" class="table table-hover" >
+            <thead>
+            <tr>
+                <th>Email</th>
+                <th>Transaction</th>
+                <th>Method</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="container">
+    <div class="d-flex justify-content-between">
+        <div class="datatable-info">
+            <span></span>
+        </div>
+        <nav id="paging-first-datatable" aria-label="Page navigation example">
+
+        </nav>
+    </div>
+
+</div>
+
+<div class="loading"></div>
+
+<script  src="../ColorTable.js"></script>
+<script>
+    window.datatable = ColorTable.init(document.querySelector("#datatable"), {
+        sort: {
+            email: false,
+            transaction: false,
+            method: false,
+            amount: true,
+            status: true,
+            action: true,
+        },
+        filters: {
+            email: true,
+            transaction: true,
+            method: "select",
+            amount: false,
+            status: "select",
+            action: false,
+        },
+        filterText: "Search... ",
+        counterText: function (
+            currentPage,
+            totalPage,
+            firstRow,
+            lastRow,
+            totalRow
+        ) {
+            return (
+                "Showing " +
+                firstRow +
+                " to " +
+                lastRow +
+                " of " +
+                totalRow +
+                " items."
+            );
+        },
+        counterDivSelector: ".datatable-info span",
+        pagingDivSelector: "#paging-first-datatable",
+        pagingItemClass: 'page-item',
+        pagingLinkClass: 'page-link',
+        filterInputClass: 'form-control',
+        filterSelectClass: 'form-control',
+        pagingListClass: 'pagination justify-content-end',
+        firstPage: false,
+        lastPage: false,
+        loadingDivSelector: ".loading",
+        loadingActiveClass: "has-loader-active",
+        data: {
+            url: "http://localhost/pensingle/get.php",
+            type: "post",
+            serverPaging: true,
+        }
+    })
+
+</script>
+</body>
+</html>
