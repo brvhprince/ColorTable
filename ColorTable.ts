@@ -1710,22 +1710,23 @@ class ColorTable {
         const formData = new FormData()
         const limit = this.options.pageSize
         let start = 0
+        const query = {}
+        // @ts-ignore
+        for (const [key , value] of Object.entries(this.filterValues)) {
+            query[key] = value
 
+        }
 
         if (this.options.data.type.toUpperCase() == 'GET') {
-                url +=`?start=${start}&limit=${limit}`
+                url +=`?start=${start}&limit=${limit}&query=${JSON.stringify(query)}`
 
-            for (let fk in this.filterValues) {
-                url +=`&query[]=${JSON.stringify({[fk]: this.filterValues[fk]})}`
-            }
         }
         else {
+
                 formData.append('start', start.toString())
                 formData.append('limit', limit.toString())
 
-                for (let fk in this.filterValues) {
-                    formData.append('query[]', JSON.stringify({[fk]: this.filterValues[fk]}))
-                }
+            formData.append('query', JSON.stringify(query))
 
         }
 

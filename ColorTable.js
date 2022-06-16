@@ -1354,7 +1354,6 @@ var ColorTable = /** @class */ (function () {
         this.options.afterRefresh.call(this.table);
     };
     ColorTable.prototype.search = function () {
-        var _a, _b;
         this.showLoadingDiv();
         var xhr = new XMLHttpRequest();
         xhr.timeout = this.options.data.timeout;
@@ -1382,18 +1381,19 @@ var ColorTable = /** @class */ (function () {
         var formData = new FormData();
         var limit = this.options.pageSize;
         var start = 0;
+        var query = {};
+        // @ts-ignore
+        for (var _i = 0, _a = Object.entries(this.filterValues); _i < _a.length; _i++) {
+            var _b = _a[_i], key = _b[0], value = _b[1];
+            query[key] = value;
+        }
         if (this.options.data.type.toUpperCase() == 'GET') {
-            url += "?start=".concat(start, "&limit=").concat(limit);
-            for (var fk in this.filterValues) {
-                url += "&query[]=".concat(JSON.stringify((_a = {}, _a[fk] = this.filterValues[fk], _a)));
-            }
+            url += "?start=".concat(start, "&limit=").concat(limit, "&query=").concat(JSON.stringify(query));
         }
         else {
             formData.append('start', start.toString());
             formData.append('limit', limit.toString());
-            for (var fk in this.filterValues) {
-                formData.append('query[]', JSON.stringify((_b = {}, _b[fk] = this.filterValues[fk], _b)));
-            }
+            formData.append('query', JSON.stringify(query));
         }
         xhr.open(this.options.data.type, url, true);
         xhr.responseType = 'json';
