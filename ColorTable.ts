@@ -11,6 +11,8 @@ interface AjaxOptions {
     refresh?: number
     timeout?: number
     type?: 'post' | 'get' | 'POST' | 'GET'
+    filterInput?: 'client' | 'server'
+    filterSelect?: 'client' | 'server'
 }
 
 interface SyncData {
@@ -30,6 +32,7 @@ interface Options {
     nbColumns: number
     forceStrings: boolean
     tableClass: string
+    empty: string
     loadingActiveClass: string
     pagingListClass: string
     pagingDivClass: string
@@ -711,7 +714,7 @@ class ColorTable {
                 typeWatch(function () {
                     datatable.filterValues[field] = val
 
-                    if (datatable.serverPaging) {
+                    if (datatable.serverPaging && datatable.options.data.filterInput === 'server') {
                         datatable.search()
                     }
                     else {
@@ -939,7 +942,7 @@ class ColorTable {
                 }
                 const field = this.dataset.filter
                 datatable.filterValues[field] = multiple ? val : ((empty && !val) ? allKeys : [val])
-                if (datatable.serverPaging) {
+                if (datatable.serverPaging && datatable.options.data.filterSelect === 'server') {
                     datatable.search()
                 }
                 else {
@@ -1640,10 +1643,8 @@ class ColorTable {
         this.table.tBodies[0].innerHTML = ""
         const totalPage = this.serverPaging ? this.totalPage : this.data.length
             if (this.currentStart >= totalPage) {
-                this.table.tBodies[0].innerHTML = `<tr><td colspan="' + this.options.nbColumns + '">
-                <div class="progress progress-striped active">
-                <div class="bar" style="width: 100%;"></div>
-                </div></div></tr>`
+                this.table.tBodies[0].innerHTML = `<tr>
+                   <td colspan="${ this.options.nbColumns}">${this.options.empty}</td></tr>`
                 return
             }
 
@@ -1708,7 +1709,7 @@ class ColorTable {
         let url = this.options.data.url
         const formData = new FormData()
         const limit = this.options.pageSize
-        let start = (this.currentStart + 1) * limit
+        let start = 0
 
 
         if (this.options.data.type.toUpperCase() == 'GET') {
@@ -1735,6 +1736,7 @@ class ColorTable {
     }
 
     public reload() {
+        this.showLoadingDiv()
         const xhr = new XMLHttpRequest()
         xhr.timeout = this.options.data.timeout
         xhr.onreadystatechange = function (datatable) {
@@ -1742,8 +1744,17 @@ class ColorTable {
                 if (this.readyState == 4) {
                     switch (this.status) {
                         case 200:
-                            datatable.data = this.response
+                        case 201:
+                            if(datatable.serverPaging) {
+                                datatable.totalPage = this.response.total
+                                datatable.data = this.response.data
+                            }
+                            else  {
+                                datatable.data = datatable.data.concat(this.response)
+                            }
+                            datatable.hideLoadingDiv()
                             datatable.sort(true)
+                            datatable.updateFilter()
 
                             break
                         default: console.error("ERROR: " + this.status + " - " + this.statusText)
@@ -2112,6 +2123,10 @@ class ColorTable {
              *
              */
             filterSelectClass: 'input',
+            /**
+             * Empty Results message
+             */
+            empty: 'No data available',
 
             /**
              *
@@ -2154,6 +2169,8 @@ class ColorTable {
             type: 'get',
             serverPaging: false,
             refresh: undefined,
+            filterInput: 'server',
+            filterSelect: 'server',
         }
     }
 }
